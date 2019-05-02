@@ -1,0 +1,90 @@
+#!/bin/bash
+
+export PROJECT=${PWD##*/}
+
+COMPOSE_TEMPLATE="docker-compose.yml.template"
+COMPOSE="docker-compose.yml"
+
+control_down() {
+	scripts/down.sh
+}
+
+check_env() {
+
+	ENV=".env"
+
+	if [ ! -f $ENV ]; then echo "The .env file does not exist please generate it."; exit 1; fi
+
+	set -o allexport; source ./.env; set +o allexport
+
+        if ! [[ -v MYSQL_USER && -v MYSQL_PASS && -v MYSQL_DB ]]; then
+                env_usage
+        fi
+}
+
+env_usage() {
+  echo "The .env file must contain the following variables:"
+  echo "  MYSQL_DB"
+  echo "  MYSQL_USER"
+  echo "  MYSQL_PASS"
+  echo "  MONGO_DB"
+  exit 1
+}
+
+do_mongify() {
+	export MYSQL_HOST=${MYSQL_HOST:-127.0.0.1}
+	export MONGO_HOST=${MONGO_HOST:-127.0.0.1}
+	export MYSQL_ROOT_PASS=${MYSQL_ROOT_PASS:-root}
+	export MONGO_ADMIN_PASS=${MONGO_ADMIN_PASS:-admin}
+
+	perl -p -i -e 's/\$\{([^}]+)\}/defined $ENV{$1} ? $ENV{$1} : $&/eg' < $COMPOSE_TEMPLATE > $COMPOSE
+
+	scripts/down.sh
+	scripts/up.sh
+
+	if [[ -v SQL_FILE ]]; then
+		scripts/import_sql_file.sh
+	fi
+
+	docker build -t alpine-mongify:latest mongify
+
+	docker run --rm --name mongify -ti --network host \
+       		-e MYSQL_HOST=$MYSQL_HOST \
+       		-e MYSQL_USER=$MYSQL_USER \
+       		-e MYSQL_PASS=$MYSQL_PASS \
+       		-e MYSQL_DB=$MYSQL_DB \
+       		-e MONGO_HOST=$MONGO_HOST \
+       		-e MONGO_DB=$MONGO_DB \
+       		alpine-mongify:latest
+
+}
+
+unset_env_vars() {
+  unset SQL_FILE MYSQL_HOST MYSQL_DB MYSQL_USER MYSQL_PASS MYSQL_ROOT_PASS MONGO_HOST MONGO_DB MONGO_ROOT_PASS
+}
+
+argument="$1"
+
+if [[ -z $argument ]] ; then
+	echo "Please specify an action: mongify | sql_shell | mongo_shell"
+	exit 1
+else
+	check_env
+	case $argument in
+		mongify)
+			do_mongify
+      		;;
+    		sql_shell)
+			scripts/sql_shell.sh
+		;;
+		mongo_shell)
+			scripts/mongo_shell.sh
+		;;
+    		*)
+		echo "Unknown action"
+      		;;
+  	esac
+	exit 0
+fi
+
+

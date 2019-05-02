@@ -1,0 +1,32 @@
+version: '2'
+services:
+  mysql:
+    image: yobasystems/alpine-mariadb
+    restart: always
+    environment:
+      MYSQL_DATABASE: '${MYSQL_DB}'
+      MYSQL_USER: '${MYSQL_USER}'
+      MYSQL_PASSWORD: '${MYSQL_PASS}'
+      MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASS}'
+    ports:
+      - 3306:3306
+    expose:
+      - 3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  mongo:
+    build: mongo
+    restart: always
+    environment:
+      MONGODB_ADMIN_PASSWORD: '${MONGO_ADMIN_PASS}'
+    ports:
+      - 27017:27017
+    expose:
+      - 27017
+    volumes:
+      - mongo_data:/var/lib/mongodb/data
+
+volumes:
+  mysql_data: {}
+  mongo_data: {}
