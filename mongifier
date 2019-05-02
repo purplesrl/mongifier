@@ -28,6 +28,8 @@ env_usage() {
   echo "  MYSQL_USER"
   echo "  MYSQL_PASS"
   echo "  MONGO_DB"
+  echo "  Optional:"
+  echo "  SQL_FILE"
   exit 1
 }
 
@@ -42,9 +44,11 @@ do_mongify() {
 	scripts/down.sh
 	scripts/up.sh
 
-	if [[ -v SQL_FILE ]]; then
+    if [[ -v SQL_FILE ]]; then
 		scripts/import_sql_file.sh
-	fi
+    else
+        read -p "[?] You did not specify an SQL_FILE, please import your MYSQL data and press any key to continue."
+    fi
 
 	docker build -t alpine-mongify:latest mongify
 
