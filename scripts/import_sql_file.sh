@@ -11,6 +11,8 @@ do
 	sleep $TIMEOUT
 done
 
+sleep $TIMEOUT
+
 DIR=/tmp
 FILE=$(basename $SQL_FILE)
 CONTAINER=${PROJECT}_mysql_1
